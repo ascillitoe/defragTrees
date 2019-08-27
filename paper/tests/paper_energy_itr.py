@@ -17,11 +17,11 @@ prefix = 'energy'
 seed = 0
 m1 = 384
 m2 = m1 + 384
-trial = 10
+trial = 1  # should be 10
 
 # data
-df = pd.read_csv('./data/energy.csv', sep=',', header=None)
-df = df.drop([9, 10, 11], 1)
+df = pd.read_csv('./data/energy.csv', sep=',', header=0)
+df = df.drop(columns=['Y2','Unnamed: 10','Unnamed: 11'])
 num = len(df)
 
 # data
@@ -35,8 +35,8 @@ for t in range(trial):
     # data - train & test
     np.random.seed(seed + t)
     idx = np.random.permutation(num)
-    df1 = df.ix[idx[:m1], :]
-    df2 = df.ix[idx[m1:m2], :]
+    df1 = df.iloc[idx[:m1], :]
+    df2 = df.iloc[idx[m1:m2], :]
     
     # save
     dirname2 = '%s/result_%02d' % (dirname, t)
@@ -50,6 +50,6 @@ for t in range(trial):
 # demo_R
 Kmax = 10
 restart = 200
-njobs = 10
+njobs = 4
 treenum = 100
 paper_sub_itr.run(prefix, Kmax, restart, trial, treenum=treenum, modeltype='regression', njobs=njobs)

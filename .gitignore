@@ -10,3 +10,9 @@ paper/__pycache__/
 paper/baselines/__pycache__/
 
 /example/forest
+
+.DS_Store
+.python-version
+Pipfile
+Pipfile.lock
+paper/.DS_Store

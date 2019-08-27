@@ -10,7 +10,13 @@ from multiprocessing import Pool
 def argwrapper(args):
     return args[0](*args[1:])
 
-def fitBATreeCV(X, y, mdl, modeltype='regression', max_depth=[2, 3, 4], min_samples_split=[10, 20, 30], cv=5, seed=0, smear_num=100, njobs=1):
+def fitBATreeCV(X, y, mdl, modeltype='regression', max_depth=[2, 3, 4], min_samples_split=[10, 20, 30], cv=5, seed=0, smear_num=100, njobs=1,verbose=False):
+
+    if verbose:
+        print('cv                = ', cv)
+        print('max_depth         = ', max_depth)
+        print('min_samples_split = ', min_samples_split)
+        print('njobs             = ', njobs)
     np.random.seed(seed)
     idx = np.mod(np.random.permutation(X.shape[0]), cv)
     E = np.zeros((len(max_depth), len(min_samples_split), cv))
@@ -23,6 +29,7 @@ def fitBATreeCV(X, y, mdl, modeltype='regression', max_depth=[2, 3, 4], min_samp
             yte = y[idx == k]
             for i, depth in enumerate(max_depth):
                 for j, split in enumerate(min_samples_split):
+                    if verbose: print('CVFold,depth,split: ', k, depth, split)
                     i, j, k, err = subfit(i, j, k, Xtr, ytr, Xte, yte, mdl, modeltype, depth, split, smear_num, s)
                     E[i, j, k] = err
                     s += 1
@@ -36,6 +43,7 @@ def fitBATreeCV(X, y, mdl, modeltype='regression', max_depth=[2, 3, 4], min_samp
             yte = y[idx == k]
             for i, depth in enumerate(max_depth):
                 for j, split in enumerate(min_samples_split):
+                    if verbose: print('CVFold,depth,split: ', k, depth, split)
                     args.append((subfit, i, j, k, Xtr, ytr, Xte, yte, mdl, modeltype, depth, split, smear_num, s))
                     s += 1
         res = pool.map(argwrapper, args)
@@ -43,10 +51,19 @@ def fitBATreeCV(X, y, mdl, modeltype='regression', max_depth=[2, 3, 4], min_samp
         pool.join()
         for r in res:
             E[r[0], r[1], r[2]] = r[3]
+
     E = np.mean(E, axis=2)
     i = np.sum(E == np.min(E), axis=1).nonzero()[0][0]
     j = np.sum(E == np.min(E), axis=0).nonzero()[0][0]
+
+    if verbose: 
+        print('\nFinal max_depth = ', max_depth[i])
+        print('Final min_samples_split = ', min_samples_split[j])
+        print('Creating BATreeModel')
+
     tree = BATreeModel(modeltype=modeltype, max_depth=max_depth[i], min_samples_split=min_samples_split[j], smear_num=smear_num, seed=seed)
+
+    if verbose: print('Fitting BATreeModel')
     tree.fit(X, y, mdl)
     return tree
 

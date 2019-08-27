@@ -8,6 +8,7 @@ sys.path.append('../')
 
 import numpy as np
 from sklearn.ensemble import RandomForestClassifier, ExtraTreesClassifier, AdaBoostClassifier, GradientBoostingClassifier
+from sklearn.metrics import accuracy_score
 from defragTrees import DefragModel
 
 # load data
@@ -19,11 +20,14 @@ Xte = Zte[:, :-1]
 yte = Zte[:, -1]
 
 # train tree ensemble
-forest = GradientBoostingClassifier(min_samples_leaf=10)
-#forest = RandomForestClassifier(min_samples_leaf=10)
+#forest = GradientBoostingClassifier(min_samples_leaf=10)
+forest = RandomForestClassifier(min_samples_leaf=10)
 #forest = ExtraTreesClassifier(min_samples_leaf=10)
 #forest = AdaBoostClassifier()
 forest.fit(Xtr, ytr)
+
+score = accuracy_score(yte,forest.predict(Xte))
+print('RF Test Error = %f' % (1.0-score,))
 
 # fit simplified model
 Kmax = 10

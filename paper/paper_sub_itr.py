@@ -19,6 +19,9 @@ import matplotlib.pyplot as plt
 from defragTrees import DefragModel
 from Baselines import inTreeModel, NHarvestModel, DTreeModel, BTreeModel
 
+from sklearn.ensemble import RandomForestClassifier, RandomForestRegressor
+from sklearn.metrics import accuracy_score, mean_squared_error
+
 def run(prefix, Kmax, restart, trial, modeltype='regression', treenum=100, maxitr=1000, tol=1e-6, njobs=1):
     
     # trial
@@ -29,31 +32,53 @@ def run(prefix, Kmax, restart, trial, modeltype='regression', treenum=100, maxit
         dirname2 = '%s/result_%02d' % (dirname, t)
         trfile = '%s/%s_train_%02d.csv' % (dirname2, prefix, t)
         tefile = '%s/%s_test_%02d.csv' % (dirname2, prefix, t)
-        Ztr = pd.read_csv(trfile, delimiter=',', header=None).values
+        Ztr = pd.read_csv(trfile, delimiter=',', header=None).values # Training data
         Xtr = Ztr[:, :-1]
         ytr = Ztr[:, -1]
-        Zte = pd.read_csv(tefile, delimiter=',', header=None).values
+        Zte = pd.read_csv(tefile, delimiter=',', header=None).values # Test data
         Xte = Zte[:, :-1]
         yte = Zte[:, -1]
         
-        # build R random forest
-        if modeltype == 'regression':
-            os.system('Rscript ./baselines/buildRegForest.R %s %s %s %d 0' % (trfile, tefile, dirname2, treenum))
+        # Build scikit-learn random fores
+        if modeltype=='regression':
+            forest = RandomForestRegressor(n_estimators=treenum) 
+            forest.fit(Xtr,ytr)
+            score = mean_squared_error(yte,forest.predict(Xte))
         elif modeltype == 'classification':        
-            os.system('Rscript ./baselines/buildClfForest.R %s %s %s %d 0' % (trfile, tefile, dirname2, treenum))
-        splitter = DefragModel.parseRtrees('%s/forest/' % (dirname2,))
-        zfile = '%s/pred_test.csv' % (dirname2,)
-        zte = pd.read_csv(zfile, delimiter=' ', header=None).values[:, -1]
-        if modeltype == 'regression':
-            score = np.mean((yte - zte)**2)
-            cover = 1.0
-            coll = 1.0
-        elif modeltype == 'classification':
-            score = np.mean(yte != zte)
-            cover = 1.0
-            coll = 1.0
+            forest = RandomForestClassifier(n_estimators=treenum)
+            forest.fit(Xtr,ytr)    
+            score = accuracy_score(yte,forest.predict(Xte))
+
+        print('RF Test Error = %f' % (1.0-score,))
+        cover = 1.0
+        coll = 1.0
         np.savetxt('%s/res_rf_%02d.csv' % (dirname2, t), np.array([score, cover, coll, -1]), delimiter=',')
-        
+
+        # parse sklearn tree ensembles into the array of (feature index, threshold)
+        splitter = DefragModel.parseSLtrees(forest) 
+
+        # Write sklearn random forests to file (in the same format as the .R ones)
+        # inTrees, NHarvest, BATrees and DTree2 can then be performed on this RF without any modification to packages.
+        save_SLtrees('%s/forest/' % (dirname2,),forest)
+#
+#        # build R random forest
+#        if modeltype == 'regression':
+#            os.system('Rscript ./baselines/buildRegForest.R %s %s %s %d 0' % (trfile, tefile, dirname2, treenum))
+#        elif modeltype == 'classification':        
+#            os.system('Rscript ./baselines/buildClfForest.R %s %s %s %d 0' % (trfile, tefile, dirname2, treenum))
+#        splitter = DefragModel.parseRtrees('%s/forest/' % (dirname2,))
+#        zfile = '%s/pred_test.csv' % (dirname2,)
+#        zte = pd.read_csv(zfile, delimiter=' ', header=None).values[:, -1]
+#        if modeltype == 'regression':
+#            score = np.mean((yte - zte)**2)
+#            cover = 1.0
+#            coll = 1.0
+#        elif modeltype == 'classification':
+#            score = np.mean(yte != zte)
+#            cover = 1.0
+#            coll = 1.0
+#        np.savetxt('%s/res_rf_%02d.csv' % (dirname2, t), np.array([score, cover, coll, -1]), delimiter=',')
+#
         # defragTrees
         mdl = DefragModel(modeltype=modeltype, restart=restart, maxitr=maxitr, tol=tol, seed=restart*t, njobs=njobs)
         mdl.fit(Xtr, ytr, splitter, Kmax, fittype='FAB')
@@ -82,10 +107,11 @@ def run(prefix, Kmax, restart, trial, modeltype='regression', treenum=100, maxit
         np.savetxt('%s/res_nodeHarvest_%02d.csv' % (dirname2, t), np.array([score, cover, coll, len(mdl3.rule_)]), delimiter=',')
         
         # BA Tree Result
-        mdl4 = BTreeModel(modeltype=modeltype, njobs=njobs, seed=t)
+        mdl4 = BTreeModel(modeltype=modeltype, njobs=njobs, seed=t, verbose=True)
         mdl4.fit(Xtr, ytr, '%s/forest/' % (dirname2,))
         joblib.dump(mdl4, '%s/%s_BATree_%02d.mdl' % (dirname2, prefix, t), compress=9)
         score, cover, coll = mdl4.evaluate(Xte, yte)
+        print('BATree Test Error = %f\n' % (score,))
         np.savetxt('%s/res_BATree_%02d.csv' % (dirname2, t), np.array([score, cover, coll, len(mdl4.rule_)]), delimiter=',')
         
         # DTree - depth = 2
@@ -98,7 +124,45 @@ def run(prefix, Kmax, restart, trial, modeltype='regression', treenum=100, maxit
     # summary
     plot_summarize(prefix, trial)
     summary2csv(prefix, trial)
+
+def save_SLtrees(savedir,mdl):
+    for t, tree in enumerate(mdl.estimators_): #loop through each tree in forest
+        left = tree.tree_.children_left
+        right = tree.tree_.children_right
+        feature = tree.tree_.feature[left >= 0]
+        threshold = tree.tree_.threshold[left >= 0]
+        predictions = tree.tree_.value.flatten()
     
+        n_nodes = tree.tree_.node_count
+
+        os.makedirs(savedir, exist_ok=True)
+        filename = os.path.join(savedir,'tree%03d.txt' % (t+1))
+        f = open(filename, "w")       
+        f.write(' node\t\t\t\t\t left\t\t\t right\t\t split var\t\t split point\t\t status\t\t prediction')
+
+        s = 0 # counter for split nodes
+        for n in range(n_nodes): # n is global node counter
+            if(left[n] != right[n]): #if split node
+                status = -3
+                l = left[n]
+                r = right[n]
+                splitvar = feature[s] 
+                splitpt = threshold[s]
+                pred = predictions[n]
+                s += 1
+            else:  # leaf node
+                status = -1
+                l = 0
+                r = 0
+                splitvar = 0
+                splitpt = 0.0
+                pred = predictions[n]
+            
+            f.write('\n {:5d} \t {:9d} \t {:9d} \t {:9d} \t {:12.3f} \t {:9d} \t {:12.6f}'.format(n+1, l+1, r+1, splitvar+1, splitpt, status, pred ))
+
+        f.close()
+            
+
 def summarize(prefix, trial):
     dirname = './result/result_%s_itr' % (prefix,)
     res = []

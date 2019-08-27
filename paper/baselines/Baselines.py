@@ -12,7 +12,7 @@ from RForest import RForest
 import numpy as np
 import re
 from sklearn import tree
-from sklearn.grid_search import GridSearchCV
+from sklearn.model_selection import GridSearchCV
 
 #************************
 # inTree Class
@@ -217,7 +217,7 @@ class DTreeModel(RuleModel):
 # BTree Class
 #************************
 class BTreeModel(RuleModel):
-    def __init__(self, modeltype='regression', max_depth=[2, 3, 4, 6, 8, 10], min_samples_leaf=[10], cv=5, smear_num=100, njobs=1, seed=0):
+    def __init__(self, modeltype='regression', max_depth=[2, 3, 4, 6, 8, 10], min_samples_leaf=[10], cv=5, smear_num=100, njobs=1, seed=0, verbose=False):
         super().__init__(modeltype=modeltype)
         self.max_depth_ = max_depth
         self.min_samples_leaf_ = min_samples_leaf
@@ -225,6 +225,7 @@ class BTreeModel(RuleModel):
         self.smear_num_ = smear_num
         self.njobs_ = njobs
         self.seed_ = seed
+        self.verbose_ = verbose
         
     #************************
     # Fit and Related Methods
@@ -235,7 +236,8 @@ class BTreeModel(RuleModel):
         self.setdefaultpred(y)
         mdl = RForest(modeltype=self.modeltype_)
         mdl.fit(dirname)
-        tree = BATree.fitBATreeCV(X, y, mdl, modeltype=self.modeltype_, max_depth=self.max_depth_, min_samples_split=self.min_samples_leaf_, cv=self.cv_, seed=self.seed_, smear_num=self.smear_num_, njobs=self.njobs_)
+        if self.verbose_: print('Starting fitBATreeCV')
+        tree = BATree.fitBATreeCV(X, y, mdl, modeltype=self.modeltype_, max_depth=self.max_depth_, min_samples_split=self.min_samples_leaf_, cv=self.cv_, seed=self.seed_, smear_num=self.smear_num_, njobs=self.njobs_,verbose=self.verbose_)
         self.__parseTree(tree)
         self.weight_ = np.ones(len(self.rule_))
         return tree
