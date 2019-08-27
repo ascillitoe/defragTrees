@@ -12,8 +12,6 @@ import numpy as np
 import pandas as pd
 from sklearn.externals import joblib
 
-import matplotlib
-matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 
 from defragTrees import DefragModel
@@ -138,10 +136,6 @@ def plot_summarize(prefix, trial, title=None):
         title = prefix
     plt.title(title, fontsize=24)
     plt.show()
-    if not os.path.exists('./result/fig/'):
-        os.mkdir('./result/fig/')
-    plt.savefig('./result/fig/compare_%s.pdf' % (prefix,), format="pdf", bbox_inches="tight")
-    plt.close()
 
 def summary2csv(prefix, trial):
     res = summarize(prefix, trial)

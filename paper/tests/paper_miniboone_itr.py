@@ -41,8 +41,8 @@ for t in range(trial):
     # data - train & test
     np.random.seed(seed + t)
     idx = np.random.permutation(num)
-    df1 = df.ix[idx[:m1], :]
-    df2 = df.ix[idx[m1:m2], :]
+    df1 = df.iloc[idx[:m1], :]
+    df2 = df.iloc[idx[m1:m2], :]
     
     # save
     dirname2 = '%s/result_%02d' % (dirname, t)
@@ -56,7 +56,7 @@ for t in range(trial):
 # demo_R
 Kmax = 10
 restart = 20
-njobs = 10
+njobs = 4
 maxitr = 3000
 tol = 1e-2
 treenum = 100

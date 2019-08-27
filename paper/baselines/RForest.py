@@ -8,8 +8,6 @@ import pandas as pd
 from collections import Counter
 import glob
 
-import matplotlib
-matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 import matplotlib.cm as cm
 import matplotlib.colorbar as colorbar

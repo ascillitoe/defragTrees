@@ -12,7 +12,7 @@ from RForest import RForest
 import numpy as np
 import re
 from sklearn import tree
-from sklearn.grid_search import GridSearchCV
+from sklearn.model_selection import GridSearchCV
 
 #************************
 # inTree Class

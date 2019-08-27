@@ -13,8 +13,6 @@ import numpy as np
 import paper_sub
 from RForest import RForest
 
-import matplotlib
-matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 import matplotlib.cm as cm
 import matplotlib.colorbar as colorbar

@@ -54,6 +54,6 @@ for t in range(trial):
 # demo_R
 Kmax = 10
 restart = 20
-njobs = 10
+njobs = 4
 treenum = 100
 paper_sub_itr.run(prefix, Kmax, restart, trial, treenum=treenum, modeltype='classification', njobs=njobs)
