@@ -3,7 +3,7 @@
 *.data
 *.pyc
 
-paper/result/
+*/result/
 
 __pycache__/
 paper/__pycache__/

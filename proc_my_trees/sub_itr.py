@@ -166,18 +166,31 @@ def run(prefix, Kmax, restart, trial, modeltype='regression', rftype='R', treenu
         print('BATree Test Coverage = %.2f' % (cover))
         print('BATree Overlap = %.2f' % (coll))
         np.savetxt('%s/res_BATree_%02d.csv' % (dirname2, t), np.array([score, cover, coll, len(mdl4.rule_)]), delimiter=',')
-        
+        BATree_depth = mdl4.tree.max_depth_
+     
         # DTree - depth = 2
-        if verbose: print('Fitting Dtree')
+        if verbose: print('Fitting Dtree - depth=2')
         mdl5 = DTreeModel(modeltype=modeltype, max_depth=[2],score=scoring)
         mdl5.fit(Xtr, ytr)
         joblib.dump(mdl5, '%s/%s_DTree2_%02d.mdl' % (dirname2, prefix, t), compress=9)
         score, cover, coll = mdl5.evaluate(Xte, yte)
-        print('DTree Test Score = %.2f' % (score))
-        print('DTree Test Coverage = %.2f' % (cover))
-        print('DTree Overlap = %.2f' % (coll))
+        print('DTree2 Test Score = %.2f' % (score))
+        print('DTree2 Test Coverage = %.2f' % (cover))
+        print('DTree2 Overlap = %.2f' % (coll))
         np.savetxt('%s/res_DTree2_%02d.csv' % (dirname2, t), np.array([score, cover, coll, len(mdl5.rule_)]), delimiter=',')
     
+        # DTree - depth = BATree_depth
+        if verbose: print('Fitting Dtree to match BATree depth = ', BATree_depth)
+        mdl5 = DTreeModel(modeltype=modeltype, max_depth=[BATree_depth],score=scoring)
+        mdl5.fit(Xtr, ytr)
+        joblib.dump(mdl5, '%s/%s_DTreeBA_%02d.mdl' % (dirname2, prefix, t), compress=9)
+        score, cover, coll = mdl5.evaluate(Xte, yte)
+        print('DTreeBA Test Score = %.2f' % (score))
+        print('DTreeBA Test Coverage = %.2f' % (cover))
+        print('DTreeBA Overlap = %.2f' % (coll))
+        np.savetxt('%s/res_DTreeBA_%02d.csv' % (dirname2, t), np.array([score, cover, coll, len(mdl5.rule_)]), delimiter=',')
+
+   
     # summary
     plot_summarize(prefix, trial, rftype)
     summary2csv(prefix, trial, rftype)

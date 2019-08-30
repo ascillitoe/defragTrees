@@ -79,16 +79,21 @@ def main():
         f.write(str(mdl3))
         f.close()
 
-        # BATrees - visualise tree
+        # BATree - visualise tree
         filename = '%s/%s_BATree_%02d.mdl' % (dirname2, prefix, t)
         mdl4 = joblib.load(filename)
         mytree = convert_BTree_to_DTree(mdl4.tree)
         export_DTree(mytree,'%s/%s_BATree_%02d.gv' % (dirname4, prefix, t),feature_names=X_headers)
 
-        # DTree - visualise tree
+        # DTree2 - visualise tree
         filename = '%s/%s_DTree2_%02d.mdl' % (dirname2, prefix, t)
         mdl5 = joblib.load(filename)
-        export_DTree(mdl5.tree.tree_,'%s/%s_DTree_%02d.gv' % (dirname4, prefix, t),feature_names=X_headers)
+        export_DTree(mdl5.tree.tree_,'%s/%s_DTree2_%02d.gv' % (dirname4, prefix, t),feature_names=X_headers)
+
+        # DTreeBA - visualise tree
+        filename = '%s/%s_DTreeBA_%02d.mdl' % (dirname2, prefix, t)
+        mdl6 = joblib.load(filename)
+        export_DTree(mdl6.tree.tree_,'%s/%s_DTreeBA_%02d.gv' % (dirname4, prefix, t),feature_names=X_headers)
 
     # summary
     plot_summarize_std(prefix, trial, rftype)
@@ -156,9 +161,9 @@ def export_DTree(t,filename,feature_names=None):
     for i in range(m):
         if(LI[i]==0): #Interior node
             if feature_names is None:
-                f.write('\n%d [label="x[%d] <= %.4f"];' %(i, feature[i]+1,threshold[i]))
+                f.write('\n%d [label="x[%d] <= %.3f"];' %(i, feature[i]+1,threshold[i]))
             else:
-                f.write('\n%d [label="%s <= %.4f"];' %(i, feature_names[feature[i]],threshold[i]))
+                f.write('\n%d [label="%s <= %.3f"];' %(i, feature_names[feature[i]],threshold[i]))
         else: #Leaf node
             P = value[i][1] # likelihood of y=1 (use as colorscale for green to red)
             H,S,V = getHSV(P)
