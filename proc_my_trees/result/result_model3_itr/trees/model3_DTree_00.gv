@@ -1,0 +1,17 @@
+digraph tree { 
+ node [shape=box, style="rounded"] ; 
+ edge [fontname=helvetica] ;
+0 [label="Viscosity ratio <= 0.1868"];
+1 [label="Deviation from parallel shear <= 0.0406"];
+2 [label="P(y=0):  0.02\nP(y=1):  0.98", style=filled color="black" fillcolor="0.0080 0.9000 0.9000"];
+3 [label="P(y=0):  0.30\nP(y=1):  0.70", style=filled color="black" fillcolor="0.1217 0.9000 0.9000"];
+4 [label="total/normal stresses <= 0.5526"];
+5 [label="P(y=0):  0.74\nP(y=1):  0.26", style=filled color="black" fillcolor="0.2971 0.9000 0.9000"];
+6 [label="P(y=0):  0.25\nP(y=1):  0.75", style=filled color="black" fillcolor="0.1000 0.9000 0.9000"];
+0->1 [labeldistance=2.5, labelangle=45, headlabel=True];
+1->2 [labeldistance=2.5, labelangle=45, headlabel=True];
+1->3 [labeldistance=2.5, labelangle=-45, headlabel=False];
+0->4 [labeldistance=2.5, labelangle=-45, headlabel=False];
+4->5 [labeldistance=2.5, labelangle=45, headlabel=True];
+4->6 [labeldistance=2.5, labelangle=-45, headlabel=False];
+}

@@ -175,7 +175,15 @@ class RuleModel(object):
         if self.modeltype_ == 'regression':
             err = np.mean((y - z)**2);
         elif self.modeltype_ == 'classification':
-            err = np.mean(y != z)
+            if (self.score=='balanced'):
+                from sklearn.metrics import balanced_accuracy_score
+                err = 1.0 - balanced_accuracy_score(y,z)
+            elif (self.score=='standard'):
+                from sklearn.metrics import accuracy_score
+                err = 1.0 - accuracy_score(y,z)
+            elif (self.score=='f1'):
+                from sklearn.metrics import f1_score
+                err = f1_score(y,z)
         return err, np.mean(c1), np.mean(c2)
     
     def __r2box(self, r, dim):
@@ -229,7 +237,7 @@ class RuleModel(object):
 # Defrag Class
 #************************
 class DefragModel(RuleModel):
-    def __init__(self, modeltype='regression', maxitr=100, qitr=5, tol=1e-6, eps=1e-10, delta=1e-8, kappa=1e-6, seed=0, restart=10, L=-1, verbose=0, njobs=1):
+    def __init__(self, modeltype='regression', maxitr=100, qitr=5, tol=1e-6, eps=1e-10, delta=1e-8, kappa=1e-6, seed=0, restart=10, L=-1, verbose=0, njobs=1,score='standard'):
         super().__init__(modeltype=modeltype)
         self.maxitr_ = maxitr
         self.qitr_ = qitr
@@ -244,7 +252,8 @@ class DefragModel(RuleModel):
         self.njobs_ = njobs
         self.defragger_ = []
         self.opt_defragger_ = None
-    
+        self.score = score
+        
     #************************
     # Fit and Related Methods
     #************************
@@ -282,9 +291,14 @@ class DefragModel(RuleModel):
         err = self.defragger_[0].err_
         self.opt_defragger_ = self.defragger_[0]
         for itr in range(1, self.restart_):
-            if (err > self.defragger_[itr].err_):
-                err = self.defragger_[itr].err_
-                self.opt_defragger_ = self.defragger_[itr]
+            if(self.score=='f1'):
+                if (err < self.defragger_[itr].err_):
+                    err = self.defragger_[itr].err_
+                    self.opt_defragger_ = self.defragger_[itr]
+            else:
+                if (err > self.defragger_[itr].err_):
+                    err = self.defragger_[itr].err_
+                    self.opt_defragger_ = self.defragger_[itr]
         print('Optimal Model >> Seed %3d, TrainingError = %.2f, K = %d' % (self.opt_defragger_.seed_, self.opt_defragger_.err_, self.opt_defragger_.K_))
         rule, pred = self.__param2rules(X, y, self.opt_defragger_.splitter_, self.opt_defragger_.h_, self.opt_defragger_.E_, kappa=self.kappa_, modeltype=self.modeltype_)
         self.rule_ = rule
@@ -292,7 +306,7 @@ class DefragModel(RuleModel):
         self.weight_ = self.opt_defragger_.A_
     
     def fit_defragger(self, X, y, splitter, K, fittype, modeltype, maxitr, qitr, tol, eps, delta, seed, verbose):
-        defragger = Defragger(modeltype=modeltype, maxitr=maxitr, qitr=qitr, tol=tol, eps=eps, delta=delta, seed=seed, verbose=verbose)
+        defragger = Defragger(modeltype=modeltype, maxitr=maxitr, qitr=qitr, tol=tol, eps=eps, delta=delta, seed=seed, verbose=verbose, score=self.score)
         defragger.fit(X, y, splitter, K, fittype=fittype)
         return defragger
     
@@ -460,9 +474,47 @@ class DefragModel(RuleModel):
         threshold = tree.tree_.threshold[left >= 0]
         return np.c_[feature, threshold]
 
+    @staticmethod
+    def save_SLtrees(savedir,mdl):
+        import os
+
+        for t, tree in enumerate(mdl.estimators_): #loop through each tree in forest
+            left = tree.tree_.children_left
+            right = tree.tree_.children_right
+            feature = tree.tree_.feature[left >= 0]
+            threshold = tree.tree_.threshold[left >= 0]
+            predictions = tree.tree_.value.flatten()
+
+            n_nodes = tree.tree_.node_count
+
+            os.makedirs(savedir, exist_ok=True)
+            filename = os.path.join(savedir,'tree%03d.txt' % (t+1))
+            f = open(filename, "w")
+            f.write(' node\t\t\t\t\t left\t\t\t right\t\t split var\t\t split point\t\t status\t\t prediction')
+
+            s = 0 # counter for split nodes
+            for n in range(n_nodes): # n is global node counter
+                if(left[n] != right[n]): #if split node
+                    status = -3
+                    l = left[n]
+                    r = right[n]
+                    splitvar = feature[s]
+                    splitpt = threshold[s]
+                    pred = predictions[n]
+                    s += 1
+                else:  # leaf node
+                    status = -1
+                    l = 0
+                    r = 0
+                    splitvar = 0
+                    splitpt = 0.0
+                    pred = predictions[n]
+
+                f.write('\n {:5d} \t {:9d} \t {:9d} \t {:9d} \t {:12.3f} \t {:9d} \t {:12.6f}'.format(n+1, l+1, r+1, splitvar+1, splitpt, status, pred ))
+            f.close()
 
 class Defragger(object):
-    def __init__(self, modeltype='regression', maxitr=100, qitr=5, tol=1e-6, eps=1e-10, delta=1e-8, w=1, seed=0, verbose=0):
+    def __init__(self, modeltype='regression', maxitr=100, qitr=5, tol=1e-6, eps=1e-10, delta=1e-8, w=1, seed=0, verbose=0, score='standard'):
         self.modeltype_ = modeltype
         self.maxitr_ = maxitr
         self.qitr_ = qitr
@@ -472,7 +524,8 @@ class Defragger(object):
         self.w_ = w
         self.seed_ = seed
         self.verbose_ = verbose
-    
+        self.score = score
+
     def __getBinary(self, X, splitter):
         r = splitter.shape[0]
         num = X.shape[0]
@@ -527,7 +580,15 @@ class Defragger(object):
         if self.modeltype_ == 'regression':
             err = np.mean((y - z)**2)
         elif self.modeltype_ == 'classification':
-            err = 1 - np.mean(y == z)
+            if (self.score=='balanced'):
+                from sklearn.metrics import balanced_accuracy_score
+                err = 1.0 - balanced_accuracy_score(y,z)
+            elif (self.score=='standard'):
+                from sklearn.metrics import accuracy_score
+                err = 1.0 - accuracy_score(y,z)
+            elif (self.score=='f1'):
+                from sklearn.metrics import f1_score
+                err = f1_score(y,z)
         return err
     
     def __fitEM(self, X, y, splitter, K, seed):

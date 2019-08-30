@@ -56,4 +56,4 @@ Kmax = 10
 restart = 20
 njobs = 4
 treenum = 100
-paper_sub_itr.run(prefix, Kmax, restart, trial, treenum=treenum, modeltype='classification', njobs=njobs)
+paper_sub_itr.run(prefix, Kmax, restart, trial, treenum=treenum, modeltype='classification', njobs=njobs, rftype='SL')
